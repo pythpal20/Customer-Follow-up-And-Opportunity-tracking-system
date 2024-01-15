@@ -22,7 +22,7 @@ class User extends CI_Controller
 
 
         if ($this->form_validation->run() == FALSE) {
-            $data['title']  = 'User';
+            $data['title']  = 'Daftar Pengguna';
             $data['user']   = $this->db->get_where('tb_user', ['email' => $this->session->userdata('email')])->row_array();
             $data['rolex']  = $this->db->get('user_role');
 
@@ -74,15 +74,18 @@ class User extends CI_Controller
         $no = 1;
 
         foreach ($user->result() as $r) {
-            $data[] = array(
-                'id'    => $r->user_id,
-                'no'    => $no++,
-                'nama'  => $r->user_nama,
-                'role'  => $r->role,
-                'role_id'   => $r->role_id,
-                'aktif'     => $r->is_active,
-                'email'     => $r->email
-            );
+            if($r->is_active != 0) {
+                $data[] = array(
+                    'id'    => $r->user_id,
+                    'no'    => $no++,
+                    'nama'  => $r->user_nama,
+                    'role'  => $r->role,
+                    'role_id'   => $r->role_id,
+                    'aktif'     => $r->is_active,
+                    'email'     => $r->email,
+                    'nominal'   => "Rp. " . number_format(sumPo($r->user_nama, date('m')), 0, ",", ".")
+                );
+            }
         }
 
         print_r(json_encode($data));
@@ -98,25 +101,100 @@ class User extends CI_Controller
         $output = '';
         foreach($user->result() as $u) {
             $output .='
-            <table class="table table-bordered table-striped">
+            <table class="table table-borderless table-striped" width="100%">
                 <tr>
-                    <th>Nama User</th>
-                    <th>: ' . $u->user_nama . '</th>
+                    <th width="35%">Nama User</th>
+                    <td>:</td>
+                    <th width="35%">' . $u->user_nama . '</th>
+                    <td rowspan="4"><img alt="image" class="img-fluid" src="' . base_url("assets/img/gallery/") . $u->photo . '"></td>
                 </tr>
                 <tr>
                     <th>Email</th>
-                    <th>: ' . $u->email . '</th>
+                    <td>:</td>
+                    <th>' . $u->email . '</th>
                 </tr>
                 <tr>
                     <th>Role Access</th>
-                    <th>: ' . $u->role . '</th>
+                    <td>:</td>
+                    <th>' . $u->role . '</th>
                 </tr>
                 <tr>
                     <th>Tgl Akun</th>
-                    <th>: ' . date('d/m/Y H:i',$u->create_date) . '</th>
+                    <td>:</td>
+                    <th>' . date('d/m/Y H:i',$u->create_date) . '</th>
                 </tr>
             </table>';
         }
         echo $output;
+    }
+    
+    public function nonaktifUser()
+    {
+        $id = $this->input->post('id');
+        
+        $this->db->set('is_active', '0');
+        $this->db->where('user_id', $id);
+        $this->db->update('tb_user');
+    }
+    
+    public function editUser($id)
+    {
+        $this->form_validation->set_rules('password', 'Password', 'trim|required|min_length[6]|required|trim|matches[password2]');
+        $this->form_validation->set_rules('password2', 'Password', 'required|trim|matches[password]');
+        $this->form_validation->set_rules('nama', 'Nama User', 'trim|required');
+        $this->form_validation->set_rules('email', 'E-Mail', 'required|trim|valid_email', [
+            'valid_email'   => 'Format penulisan email salah!'
+        ]);
+        
+        
+        if ($this->form_validation->run() == FALSE) {
+            $data['title']  = 'Daftar Pengguna';
+            $data['user']   = $this->db->get_where('tb_user', ['email' => $this->session->userdata('email')])->row_array();
+            $data['rolex']  = $this->db->get('user_role');
+            
+            $key = "sifupass";
+            $decryptedData = decryptData($id, $key);
+            
+            $data['euser']  = $this->db->get_where('tb_user', ['user_id' => $decryptedData])->row_array();
+            $data['id'] = set_value('id', $id);
+
+            $this->load->view('templates/header', $data);
+            $this->load->view('templates/sidebar', $data);
+            $this->load->view('templates/headbar', $data);
+            $this->load->view('user/editUser', $data);
+            $this->load->view('templates/footer');
+        } else {
+            $nama   = $this->input->post('nama');
+            $code   = $this->input->post('code');
+            $email  = $this->input->post('email');
+            $password   = $this->input->post('password');
+            
+            $file_name  = $_FILES['images']['name'];
+            $ext        = "." . explode(".", $file_name)[1];
+            $newName    = $code . $ext;
+            
+            $config['upload_path']      = './assets/img/gallery/';
+            $config['allowed_types']    = 'jpg|JPG|jpeg|png';
+            $config['file_name']        = $newName;
+            $config['overwrite']        = true;
+            
+            $this->load->library('upload', $config);
+            
+            if ($this->upload->do_upload('images')) {
+                $data  = [
+                    'user_nama'     => htmlspecialchars($nama),
+                    'email'         => htmlspecialchars($email),
+                    'password'      => password_hash($password, PASSWORD_DEFAULT),
+                    'photo'         => $newName
+                ];
+                
+                $this->db->where('user_id', $code);
+                $this->db->update('tb_user', $data);
+                $this->session->set_flashdata('message', '<div class="alert alert-success" role="alert">Update berhasil!</div>');
+                redirect('user');
+            } else {
+                echo $this->upload->display_errors();
+            }
+        }
     }
 }
