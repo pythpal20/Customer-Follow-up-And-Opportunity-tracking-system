@@ -21,7 +21,11 @@ jobs:
         php composer-setup.php --install-dir=/usr/local/bin --filename=composer
 
     - name: Install dependencies
-      run: composer install
+      run: |
+        composer install -v
 
     - name: Run tests
-      run: vendor/bin/phpunit
+      run: |
+        php -v
+        ls -la vendor/bin
+        vendor/bin/phpunit
