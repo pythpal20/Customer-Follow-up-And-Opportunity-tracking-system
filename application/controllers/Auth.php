@@ -22,8 +22,8 @@ class Auth extends CI_Controller
 
     private function _login()
     {
-        $email = $this->input->post('email');
-        $password = $this->input->post('password');
+        $email = htmlspecialchars($this->input->post('email'));
+        $password = htmlspecialchars($this->input->post('password'));
 
         $user = $this->db->get_where('tb_user', ['email' => $email, 'is_active' => '1'])->row_array();
 

@@ -8,12 +8,15 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v2.4.4  # Use the latest version that supports Node.js 16
 
     - name: Install PHP
       uses: shivammathur/setup-php@v2
       with:
         php-version: '7.3'
+        ref: 'v2'
+        token: ${{ secrets.GITHUB_TOKEN }}
+        submodules: 'recursive'
 
     - name: Install Composer
       run: |
@@ -21,7 +24,11 @@ jobs:
         php composer-setup.php --install-dir=/usr/local/bin --filename=composer
 
     - name: Install dependencies
-      run: composer install
+      run: |
+        composer install -v
 
     - name: Run tests
-      run: vendor/bin/phpunit
+      run: |
+        php -v
+        ls -la vendor/bin
+        vendor/bin/phpunit

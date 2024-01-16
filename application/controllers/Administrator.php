@@ -55,6 +55,18 @@ class Administrator extends CI_Controller
         $this->load->view('templates/footer');
 
     }
+    
+    public function systemLogs()
+    {
+        $data['title']  = 'User logs';
+        $data['user']   = $this->db->get_where('tb_user', ['email' => $this->session->userdata('email')])->row_array();
+        
+        $this->load->view('templates/header', $data);
+        $this->load->view('templates/sidebar', $data);
+        $this->load->view('templates/headbar', $data);
+        $this->load->view('administrator/userLogs', $data);
+        $this->load->view('templates/footer');
+    }
 
     public function getRoles()
     {
@@ -210,5 +222,42 @@ class Administrator extends CI_Controller
             $this->db->delete('user_access_menu', $data);
         }
         $this->session->set_flashdata('message', '<div class="alert alert-success" role="alert">Access Changed!</div>');
+    }
+    
+    public function getLogs()
+    {
+        $ex = $this->ambilDariTable();
+        
+        header('Content-Type: application/json');
+        
+        echo json_encode(['data'=>$ex]);
+    }
+    
+    public function ambilDariTable()
+    {
+        $this->db->order_by('visit_time', 'DESC');
+        $act    = $this->db->get('activity_logs');
+        $data   = array();
+        
+        foreach($act->result() AS $row) {
+            $data[] = array(
+                'ip_address'    => $row->ip_address,
+                'visitor_name'  => $row->visitor_name,
+                'page_visited'  => $row->page_visited,
+                'visit_time'    => $row->visit_time,
+                'country'       => $row->country,
+                'isp'           => $row->isp
+            );
+        }
+        
+        return $data;
+    }
+    
+    public function hapuslog()
+    {
+        $this->db->truncate('activity_logs');
+        
+        $this->session->set_flashdata('message', '<div class="alert alert-success" role="alert">Data sudah direset!</div>');
+        redirect('administrator/systemLogs');
     }
 }

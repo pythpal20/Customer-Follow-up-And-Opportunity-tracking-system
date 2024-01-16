@@ -9,6 +9,7 @@ class Followup extends CI_Controller
         is_logged_in();
         // $this->load->model("m_dashboard");
         $this->load->model("m_followup");
+        $this->mkits = $this->load->database('mkits', TRUE);
     }
 
     public function liste()
@@ -31,23 +32,23 @@ class Followup extends CI_Controller
         $customer = $this->m_followup->getCustomer($nama, $role_id);
         $data = array();
         foreach ($customer->result() as $row) {
-            if($row->is_open == '0'){
-                $f_status = "CLOSE";
-            } else if($row->is_open == '1') {
-                $f_status = "OPEN";
-            }
+            $f_status = ($row->is_open == '0') ? "CLOSE" : "OPEN";
+            $bars = getStatusBar($row->followup_id);
+
             $data[] = array(
-                'id'        => $row->followup_id,
-                'name'      => $row->customer_name,
-                'pic'       => $row->pic,
-                'kontak'    => $row->phone,
-                'status'    => $row->status,
-                'date'      => date("Y-m-d", $row->date),
-                'add_by'    => $row->add_by,
-                'is_open'   => $row->is_open,
-                'bar'       => '<small>Completion with: '. getStatusBar($row->followup_id) .'</small><div class="progress progress-mini"><div style="width: '. getStatusBar($row->followup_id) . ';" class="progress-bar"></div></div>',
-                'bars'      => getStatusBar($row->followup_id),
-                'f_status'  => $f_status
+                'id' => $row->followup_id,
+                'name' => $row->customer_name,
+                'pic' => $row->pic,
+                'kontak' => $row->phone,
+                'status' => $row->status,
+                'date' => date("Y-m-d", $row->date),
+                'add_by' => $row->add_by,
+                'is_open' => $row->is_open,
+                // using the previously created $bars variable
+                'bar' => "<small>Completion with: $bars</small><div class=\"progress progress-mini\"><div style=\"width: $bars;\" class=\"progress-bar\"></div></div>",
+                'bars' => $bars,
+                'f_status' => $f_status,
+                'formats' => $row->format_customer
             );
         }
         echo json_encode($data);
@@ -65,6 +66,19 @@ class Followup extends CI_Controller
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode($html) ;
     }
+    
+    public function cekMkits()
+    {
+        $dataSco = $this->mkits->get_where('salesorder_hdr', ['status!=' => '2']);
+        $html = [];
+        
+        foreach($dataSco->result() AS $r) {
+            array_push($html, $r->noso);
+        }
+        
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($html);
+    }
 
     public function newCustomerFu()
     {
@@ -75,6 +89,7 @@ class Followup extends CI_Controller
         $this->form_validation->set_rules('tanggal', 'tanggal input', 'trim|required');
         $this->form_validation->set_rules('jam', 'jam input customer', 'trim|required');
         $this->form_validation->set_rules('format', 'format', 'trim|required');
+        $this->form_validation->set_rules('fmethod', 'Follow Up Method', 'trim|required');
 
         if ($this->form_validation->run() == FALSE) {
             # code...
@@ -117,7 +132,7 @@ class Followup extends CI_Controller
 
             $data = [
                 'followup_id'   => $code,
-                'customer_name' => $nmcustomer,
+                'customer_name' => htmlspecialchars(strtoupper($nmcustomer)),
                 'id_category'   => $kategori,
                 'pic'           => $pic,
                 'phone' => $kontak,
@@ -135,6 +150,8 @@ class Followup extends CI_Controller
                 'followup_date' => $inputDate,
                 'comment'       => '0',
                 'notes'         => $desc,
+                'followup_method'   => $this->input->post('fmethod'),
+                'followup_value'    => $this->input->post('fuval'),
                 'input_date'    => time(),
                 'due_date'      => $plus_48_hours
             ];
@@ -234,28 +251,75 @@ class Followup extends CI_Controller
         $tanggal    = date_format(date_create($this->input->post('tanggal')), "Y-m-d");
         $jam        = $this->input->post('jam');
 
-        $waktu = $tanggal . " " . $jam;
-        $iWaktu = new DateTimeImmutable($waktu);
-        $inputDate = $iWaktu->format('U');
+        $waktu      = $tanggal . " " . $jam;
+        $iWaktu     = new DateTimeImmutable($waktu);
+        $inputDate  = $iWaktu->format('U');
 
-        $now = $inputDate; // mengambil Unix timestamp saat ini
+        $now        = $inputDate; // mengambil Unix timestamp saat ini
         $plus_48_hours = strtotime('+48 hours', $now); // menambahkan 48 jam ke timestamp saat ini
 
-        $idf = $this->input->post('idfollowup');
-        $data = [
-            'followup_id' => $this->input->post('idfollowup'),
-            'followup_date' => $inputDate,
-            'comment'   => $this->input->post('kategori'),
-            'notes' => $this->input->post('note'),
-            'input_date' => time(),
-            'due_date' => $plus_48_hours
-        ];
+        $idf        = $this->input->post('idfollowup');
+        $kates      = $this->input->post('kategori');
+        if($kates == '0' || $kates == '1') {
+            $fumethod = $this->input->post('fmethod');
+            $fuvalues = $this->input->post('fuval');
+        } elseif($kates == '3') {
+            $fumethod = $this->input->post('fmethod');
+            $fuvalues = '';
+        } elseif($kates == '2') {
+            $fumethod = '';
+            $fuvalues = $this->input->post('jpew');
+        } elseif($kates == '4') {
+            $fumethod = '';
+            $fuvalues = $this->input->post('jpo');
+        }
+        if($this->input->post('kategori') == '4') {
+            $data = [
+                'followup_id'   => $this->input->post('idfollowup'),
+                'followup_date' => $inputDate,
+                'comment'       => $this->input->post('kategori'),
+                'notes'         => $this->input->post('note'),
+                'followup_method'   => $fumethod,
+                'followup_value'    => $fuvalues,
+                'input_date'    => time(),
+                'due_date'      => $plus_48_hours,
+                'transaction_id'        => $this->input->post('noso'),
+                'transaction_value'     => $this->input->post('nominal')
+            ];
+        } elseif($this->input->post('kategori') == '2') {
+            $data = [
+                'followup_id'   => $this->input->post('idfollowup'),
+                'followup_date' => $inputDate,
+                'comment'       => $this->input->post('kategori'),
+                'notes'         => $this->input->post('note'),
+                'followup_method'   => $fumethod,
+                'followup_value'    => $fuvalues,
+                'input_date'    => time(),
+                'due_date'      => $plus_48_hours,
+                'transaction_id'        => $this->input->post('nopnw'),
+                'transaction_value'     => $this->input->post('nominalpnw')
+            ];
+        } else {
+            $data = [
+                'followup_id'   => $this->input->post('idfollowup'),
+                'followup_date' => $inputDate,
+                'comment'       => $this->input->post('kategori'),
+                'notes'         => $this->input->post('note'),
+                'followup_method'   => $fumethod,
+                'followup_value'    => $fuvalues,
+                'input_date'    => time(),
+                'due_date'      => $plus_48_hours
+            ];
+        }
 
         $this->db->insert('tb_followup_detail', $data);
 
         $isactive = $this->input->post('isactive');
         if ($isactive) { //close project
+            $reson = $this->input->post('deReson');
+            
             $this->db->set('is_open', '0');
+            $this->db->set('close_with', $reson);
             $this->db->where('followup_id', $idf);
 
             $this->db->update('tb_followup');
@@ -264,6 +328,21 @@ class Followup extends CI_Controller
         $this->db->set('date', $inputDate);
         $this->db->where('followup_id', $idf);
         $this->db->update('tb_followup');
+        
+        $comm = $this->input->post('kategori');
+        if($comm == '4') {
+            $this->db->set('notansaksi', $this->input->post('noso'));
+            $this->db->set('nominalpo', $this->input->post('nominal'));
+            $this->db->where('followup_id', $idf);
+            $this->db->update('tb_followup');
+        }
+        
+        if($comm == '2') {
+            $this->db->set('nopenawaran', $this->input->post('nopnw'));
+            $this->db->set('nominalpenawaran', $this->input->post('nominalpnw'));
+            $this->db->where('followup_id', $idf);
+            $this->db->update('tb_followup');
+        }
 
         $this->session->set_flashdata('message', '<div class="alert alert-info" role="alert">Berhasil simpan data barus</div>');
         redirect('followup/liste');
@@ -293,15 +372,16 @@ class Followup extends CI_Controller
         $no = 1;
         foreach ($customer->result() as $row) {
             $data[] = array(
-                'no' => $no++,
-                'followup_id' => $row->followup_id,
+                'no'            => $no++,
+                'followup_id'   => $row->followup_id,
                 'customer_name' => $row->customer_name,
-                'comment' => $row->comment,
+                'comment'       => $row->comment,
                 'followup_date' => date("Y-m-d H:i", $row->followup_date),
-                'due_date' => date("Y-m-d H:i", $row->due_date),
-                'status' => $row->status,
-                'is_open' => $row->is_open,
-                'add_by' => $row->add_by
+                'due_date'      => date("Y-m-d H:i", $row->due_date),
+                'status'        => $row->status,
+                'is_open'       => $row->is_open,
+                'add_by'        => $row->add_by,
+                'methode'       => $row->followup_method
             );
         }
         echo json_encode($data);
@@ -395,8 +475,31 @@ class Followup extends CI_Controller
                                     <th>Follow-up By</th>
                                     <td>:</td>
                                     <td>' . $r['add_by'] . '</td>
-                                </tr>
-                            </table>
+                                </tr>';
+                                if($r["is_open"] == '0' AND $r["close_with"] == '0') {
+                                    $html .='<tr>
+                                        <th>No. Transaksi/ No. SCO</th>
+                                        <td>:</td>
+                                        <td>' . $r["notansaksi"] . '</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Nominal</th>
+                                        <td>:</td>
+                                        <td>Rp. ' . number_format($r["nominalpo"], 0, ".", ".") . '</td>
+                                    </tr>';
+                                } else if(getStatusBar($r['followup_id']) == '60%' || getStatusBar($r['followup_id']) == '80%') {
+                                    $html .='<tr>
+                                        <th>No. Transaksi/ No. SCO</th>
+                                        <td>:</td>
+                                        <td>' . $r["nopenawaran"] . '</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Nominal</th>
+                                        <td>:</td>
+                                        <td>Rp. ' . number_format($r["nominalpenawaran"], 0, ".", ".") . '</td>
+                                    </tr>';
+                                }
+                            $html .='</table>
                         </div>
                     </div>
                     <div role="tabpanel" id="tab-2" class="tab-pane">
@@ -404,6 +507,7 @@ class Followup extends CI_Controller
                             <thead>
                                 <th>Comment</th>
                                 <th>Tanggal Followup</th>
+                                <th>Methode</th>
                                 <th>Due-date</th>
                                 <th>Note</th>
                             </thead>
@@ -423,6 +527,7 @@ class Followup extends CI_Controller
                                     $html .='<tr>
                                         <td>' . $info .'</td>
                                         <td>' . date("d-m-Y H:i", $rw->followup_date) .'</td>
+                                        <td>' . $rw->followup_method . '</td>
                                         <td>' . date("d-m-Y H:i", $rw->due_date) .'</td>
                                         <td>' . $rw->notes .'</td>
                                     </tr>';
