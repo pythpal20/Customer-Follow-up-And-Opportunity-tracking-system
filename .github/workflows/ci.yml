@@ -1,35 +1,34 @@
-on: push
+name: CI
+
+on: [push]
 
 jobs:
-  secret-generator:
+  build:
     runs-on: ubuntu-latest
-    outputs:
-      handle: ${{ steps.generate-secret.outputs.handle }}
+
     steps:
-    - uses: some/secret-store@v1
+    - name: Checkout code
+      uses: actions/checkout@v2.4.4  # Use the latest version that supports Node.js 16
+
+    - name: Install PHP
+      uses: shivammathur/setup-php@v2
       with:
-        credentials: ${{ secrets.SECRET_STORE_CREDENTIALS }}
-        instance: ${{ secrets.SECRET_STORE_INSTANCE }}
-    - name: generate secret
-      id: generate-secret
-      shell: bash
+        php-version: '7.3'
+        ref: 'v2'
+        token: ${{ secrets.GITHUB_TOKEN }}
+        submodules: 'recursive'
+
+    - name: Install Composer
       run: |
-        GENERATED_SECRET=$((RANDOM))
-        echo "::add-mask::$GENERATED_SECRET"
-        SECRET_HANDLE=$(secret-store store-secret "$GENERATED_SECRET")
-        echo "handle=$SECRET_HANDLE" >> "$GITHUB_OUTPUT"
-  secret-consumer:
-    runs-on: macos-latest
-    needs: secret-generator
-    steps:
-    - uses: some/secret-store@v1
-      with:
-        credentials: ${{ secrets.SECRET_STORE_CREDENTIALS }}
-        instance: ${{ secrets.SECRET_STORE_INSTANCE }}
-    - name: use secret
-      shell: bash
+        php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+        php composer-setup.php --install-dir=/usr/local/bin --filename=composer
+
+    - name: Install dependencies
       run: |
-        SECRET_HANDLE="${{ needs.secret-generator.outputs.handle }}"
-        RETRIEVED_SECRET=$(secret-store retrieve-secret "$SECRET_HANDLE")
-        echo "::add-mask::$RETRIEVED_SECRET"
-        echo "We retrieved our masked secret: $RETRIEVED_SECRET"
+        composer install -v
+
+    - name: Run tests
+      run: |
+        php -v
+        ls -la vendor/bin
+        vendor/bin/phpunit
