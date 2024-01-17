@@ -1705,8 +1705,9 @@ class Master extends CI_Controller
             $dataPenawaran = $this->m_master->listPenawaranAktif($tawal, $takhir, $pengguna);
             
             $html .='<div class="table-responsive">
-            <table class="table table-hover">
+            <table class="table table-hover tbPenawaran" data-show-toggle="true" data-show-columns="true" data-show-pagination-switch="true" data-pagination="true" data-filter-control="true" data-show-search-clear-button="true" data-search="true">
                 <thead>
+                    <th>Followup ID</th>
                     <th>Tanggal</th>
                     <th>Customer</th>
                     <th>ID Penawaran</th>
@@ -1725,6 +1726,7 @@ class Master extends CI_Controller
                     }
                     $gambar = $this->db->get_where('tb_user', ['user_nama' => $row->add_by])->row_array();
                     $html .= '<tr>
+                        <td class="project-status">' . $row->followup_id . '</td>
                         <td class="project-status">' . $row->tglPenawaran . '</td>
                         <td class="project-title">' . $row->customer_name . '</td>
                         <td class="project-title">' . strtoupper($row->transaction_id) . '</td>
@@ -1911,5 +1913,69 @@ class Master extends CI_Controller
         $html .='</table>';
         
         echo $html;
+    }
+    
+    public function oportunity()
+    {
+        $oop = $this->m_master->openOpportunity();
+
+        // Inisialisasi array untuk menyimpan jumlah data
+        $countByRole = [
+            'Telemarketing Horeka' => 0,
+            'Telemarketing Foodpack' => 0,
+            'Website' => 0,
+            'E-Commerce' => 0
+        ];
+
+        // Inisialisasi array untuk menyimpan jumlah data berdasarkan progress
+        $countByProgress = [
+            'Kontak' => 0,
+            'Followup' => 0,
+            'Penawaran' => 0,
+            'Followup Penawaran' => 0
+            // Tambahkan progress lain jika diperlukan
+        ];
+            // var_dump($oop->result()); die();
+        foreach ($oop->result() as $row) {
+            // var_dump($row); die();
+            // Memeriksa role dan menambah jumlah data yang sesuai
+            switch ($row->role) {
+                case 'Telemarketing Horeka':
+                    $countByRole['Telemarketing Horeka']++;
+                    break;
+                case 'Telemarketing Foodpack':
+                    $countByRole['Telemarketing Foodpack']++;
+                    break;
+                case 'Website':
+                    $countByRole['Website']++;
+                    break;
+                case 'E-Commerce':
+                    $countByRole['E-Commerce']++;
+                    break;
+                    // Tambahkan case untuk role lain jika diperlukan
+            }
+
+            // Memeriksa progress dan menambah jumlah data yang sesuai
+            switch ($row->progress) {
+                case '0':
+                    $countByProgress['Kontak']++;
+                    break;
+                case '1':
+                    $countByProgress['Followup']++;
+                    break;
+                case '2':
+                    $countByProgress['Penawaran']++;
+                    break;
+                case '3' :
+                    $countByProgress['Followup Penawaran']++;
+                    // Tambahkan progress lain jika diperlukan
+            }
+        }
+
+        // Konversi array menjadi JSON
+        $jsonOutput = json_encode(['countByRole' => $countByRole, 'countByProgress' => $countByProgress]);
+
+        // // Output JSON
+        echo $jsonOutput;
     }
 }
