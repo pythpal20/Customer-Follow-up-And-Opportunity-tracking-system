@@ -56,18 +56,41 @@
                             <label for="" class="col-sm-2 col-form-label">Tanggal Follow-up</label>
                             <div class="col-sm-3" id="data_1">
                                 <div class="input-group date">
-                                    <span class="input-group-addon"><i class="fa fa-calendar"></i></span><input type="text" name="tanggal" id="tanggal" class="form-control" placeholder="tanggal">
+                                    <span class="input-group-addon"><i class="fa fa-calendar"></i></span><input type="text" name="tanggal" id="tanggal" class="form-control" data-date-end-date="0d" placeholder="mm/dd/YY" value="<?= date('m/d/Y') ?>" autocomplete="off">
                                 </div>
                                 <?= form_error('tanggal', '<small class="text-danger pl-3">', '</small>'); ?>
                             </div>
                             <div class="col-sm-2">
                                 <div class="input-group clockpicker" data-autoclose="true">
-                                    <input type="text" name="jam" id="jam" class="form-control" placeholder="jam">
+                                    <input type="text" name="jam" id="jam" class="form-control" placeholder="HH:II" value="<?= date('H:i') ?>">
                                     <span class="input-group-addon">
                                         <span class="fa fa-clock-o"></span>
                                     </span>
                                     <?= form_error('jam', '<small class="text-danger pl-3">', '</small>'); ?>
                                 </div>
+                            </div>
+                        </div>
+                        <div class="form-group row">
+                            <label for="fmethod" class="col-sm-2 col-form-label">Followup Method</label>
+                            <div class="col-sm-4">
+                                <select name="fmethod" id="fmethod" class="form-control">
+                                    <option value="">Choose</option>
+                                    <option value="Email">Email</option>
+                                    <option value="Marketplace">Chat on Marketplace apps</option>
+                                    <option value="Telp">Telp</option>
+                                    <option value="Visit">Visit</option>
+                                    <option value="Whatsapp">Whatsapp</option>
+                                </select>
+                            </div>
+                            <?= form_error('fmethod', '<small class="text-danger pl-3">', '</small>'); ?>
+                            <label for="fuval" class="col-sm-2 col-form-label">Followup Value</label>
+                            <div class="col-sm-4">
+                                <select name="fuval" id="fuval" class="form-control">
+                                    <option value="">Choose</option>
+                                    <option value="Wa Blast">Wa Blast</option>
+                                    <option value="Wa Blast Promo">Wa Blast Promo</option>
+                                    <option value="Tanya Barang">Tanya Barang</option>
+                                </select>
                             </div>
                         </div>
                         <div class="form-group row">
