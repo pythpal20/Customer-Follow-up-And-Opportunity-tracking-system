@@ -8,7 +8,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2.4.4  # Use the latest version that supports Node.js 16
+      uses: actions/checkout@v2.4.0  # Use the latest version that supports Node.js 16
 
     - name: Install PHP
       uses: shivammathur/setup-php@v2
