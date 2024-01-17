@@ -53,29 +53,29 @@ class Followup extends CI_Controller
         }
         echo json_encode($data);
     }
-    
+
     function dataFollowupku()
     {
         $nama       = $this->session->userdata('nama_lengkap');
         $dataku     = $this->db->get_where('tb_followup', ['add_by' => $nama]);
-        
-        $html=[];
-        foreach($dataku->result() AS $row){
+
+        $html = [];
+        foreach ($dataku->result() as $row) {
             array_push($html, $row->customer_name);
         }
         header('Content-Type: application/json; charset=utf-8');
-        echo json_encode($html) ;
+        echo json_encode($html);
     }
-    
+
     public function cekMkits()
     {
         $dataSco = $this->mkits->get_where('salesorder_hdr', ['status!=' => '2']);
         $html = [];
-        
-        foreach($dataSco->result() AS $r) {
+
+        foreach ($dataSco->result() as $r) {
             array_push($html, $r->noso);
         }
-        
+
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode($html);
     }
@@ -201,7 +201,7 @@ class Followup extends CI_Controller
         }
     }
 
-     public function getCategory()
+    public function getCategory()
     {
         if ($this->session->userdata('role_id') == '1') {
             $ctr = $this->db->get('tb_category');
@@ -224,7 +224,7 @@ class Followup extends CI_Controller
                 );
             }
         }
-        
+
         echo json_encode($data);
     }
 
@@ -260,20 +260,28 @@ class Followup extends CI_Controller
 
         $idf        = $this->input->post('idfollowup');
         $kates      = $this->input->post('kategori');
-        if($kates == '0' || $kates == '1') {
+        if ($kates == '0' || $kates == '1') {
             $fumethod = $this->input->post('fmethod');
             $fuvalues = $this->input->post('fuval');
-        } elseif($kates == '3') {
+
+            $prospek    = '';
+        } elseif ($kates == '3') {
             $fumethod = $this->input->post('fmethod');
             $fuvalues = '';
-        } elseif($kates == '2') {
+
+            $prospek    = '';
+        } elseif ($kates == '2') {
             $fumethod = '';
             $fuvalues = $this->input->post('jpew');
-        } elseif($kates == '4') {
+
+            $prospek    = $this->input->post('prospek');
+        } elseif ($kates == '4') {
             $fumethod = '';
             $fuvalues = $this->input->post('jpo');
+
+            $prospek    = '';
         }
-        if($this->input->post('kategori') == '4') {
+        if ($this->input->post('kategori') == '4') {
             $data = [
                 'followup_id'   => $this->input->post('idfollowup'),
                 'followup_date' => $inputDate,
@@ -286,7 +294,7 @@ class Followup extends CI_Controller
                 'transaction_id'        => $this->input->post('noso'),
                 'transaction_value'     => $this->input->post('nominal')
             ];
-        } elseif($this->input->post('kategori') == '2') {
+        } elseif ($this->input->post('kategori') == '2') {
             $data = [
                 'followup_id'   => $this->input->post('idfollowup'),
                 'followup_date' => $inputDate,
@@ -294,10 +302,12 @@ class Followup extends CI_Controller
                 'notes'         => $this->input->post('note'),
                 'followup_method'   => $fumethod,
                 'followup_value'    => $fuvalues,
-                'input_date'    => time(),
-                'due_date'      => $plus_48_hours,
+                'input_date'        => time(),
+                'due_date'          => $plus_48_hours,
                 'transaction_id'        => $this->input->post('nopnw'),
-                'transaction_value'     => $this->input->post('nominalpnw')
+                'transaction_value'     => $this->input->post('nominalpnw'),
+                'status_penawaran'      => $this->input->post('stpen'),
+                'prospek_penawaran'     => $prospek
             ];
         } else {
             $data = [
@@ -308,36 +318,40 @@ class Followup extends CI_Controller
                 'followup_method'   => $fumethod,
                 'followup_value'    => $fuvalues,
                 'input_date'    => time(),
-                'due_date'      => $plus_48_hours
+                'due_date'      => $plus_48_hours,
+                'info_update_penawaran' => $this->input->post('inuppe')
             ];
         }
+
+        // var_dump($data);die();
 
         $this->db->insert('tb_followup_detail', $data);
 
         $isactive = $this->input->post('isactive');
         if ($isactive) { //close project
             $reson = $this->input->post('deReson');
-            
+
             $this->db->set('is_open', '0');
             $this->db->set('close_with', $reson);
             $this->db->where('followup_id', $idf);
 
             $this->db->update('tb_followup');
         }
-        
+
         $this->db->set('date', $inputDate);
         $this->db->where('followup_id', $idf);
         $this->db->update('tb_followup');
-        
+
         $comm = $this->input->post('kategori');
-        if($comm == '4') {
+        if ($comm == '4') {
             $this->db->set('notansaksi', $this->input->post('noso'));
             $this->db->set('nominalpo', $this->input->post('nominal'));
+            $this->db->set('po_termin', $this->input->post('poter'));
             $this->db->where('followup_id', $idf);
             $this->db->update('tb_followup');
         }
-        
-        if($comm == '2') {
+
+        if ($comm == '2') {
             $this->db->set('nopenawaran', $this->input->post('nopnw'));
             $this->db->set('nominalpenawaran', $this->input->post('nominalpnw'));
             $this->db->where('followup_id', $idf);
@@ -396,26 +410,26 @@ class Followup extends CI_Controller
         $konten = $this->m_followup->getTheMax($id)->row_array();;
         $html = '';
 
-        foreach($row AS $r) {
-            if($r['is_open'] == '0') {
+        foreach ($row as $r) {
+            if ($r['is_open'] == '0') {
                 $st = '<span class="label label-danger">C L O S E</span>';
             } else {
                 $st = '<span class="label label-success">O P E N</span>';
             }
 
-            if($konten['comment'] == '0') {
+            if ($konten['comment'] == '0') {
                 $kt = '<span class="label label-danger">Kontak</span>';
-            } else if($konten['comment'] == '1') {
+            } else if ($konten['comment'] == '1') {
                 $kt = '<span class="label label-warning">Followup</span>';
-            } else if($konten['comment'] == '2') {
+            } else if ($konten['comment'] == '2') {
                 $kt = '<span class="label label-success">Penawaran</span>';
-            } else if($konten['comment'] == '3') {
+            } else if ($konten['comment'] == '3') {
                 $kt = '<span class="label label-primary">Followup Penawaran</span>';
-            } else if($konten['comment'] == '4') {
+            } else if ($konten['comment'] == '4') {
                 $kt = '<span class="label label-info">Sudah PO/ Order</span>';
             }
 
-            $html .='<div class="tabs-container">
+            $html .= '<div class="tabs-container">
                 <ul class="nav nav-tabs" role="tablist">
                     <li><a class="nav-link active" data-toggle="tab" href="#tab-1"> Info Dasar</a></li>
                     <li><a class="nav-link" data-toggle="tab" href="#tab-2">Detail Info</a></li>
@@ -450,7 +464,7 @@ class Followup extends CI_Controller
                                     <td>' . getStatus($r['followup_id']) . '
                                         <dd>
                                             <div class="progress m-b-1">
-                                                <div style="width: '. getStatusBar($r['followup_id']) .'" class="progress-bar progress-bar-striped progress-bar-animated"></div>
+                                                <div style="width: ' . getStatusBar($r['followup_id']) . '" class="progress-bar progress-bar-striped progress-bar-animated"></div>
                                             </div>
                                             <small>Project Remaining in <strong>' . getStatusBar($r['followup_id']) . '</strong>. dari 100%.</small>
                                         </dd>
@@ -459,7 +473,7 @@ class Followup extends CI_Controller
                                 <tr>
                                     <th>Tahap Followup</th>
                                     <td>:</td>
-                                    <td>' . $kt . ' Tanggal  ' . date("Y-m-d H:i",$konten["followup_date"]) .'</td>
+                                    <td>' . $kt . ' Tanggal  ' . date("Y-m-d H:i", $konten["followup_date"]) . '</td>
                                 </tr>
                                 <tr>
                                     <th>Status Followup</th>
@@ -469,15 +483,15 @@ class Followup extends CI_Controller
                                 <tr>
                                     <th>Notes</th>
                                     <td>:</td>
-                                    <td>' . $konten["notes"] .'</td>
+                                    <td>' . $konten["notes"] . '</td>
                                 </tr>
                                 <tr>
                                     <th>Follow-up By</th>
                                     <td>:</td>
                                     <td>' . $r['add_by'] . '</td>
                                 </tr>';
-                                if($r["is_open"] == '0' AND $r["close_with"] == '0') {
-                                    $html .='<tr>
+            if ($r["is_open"] == '0' and $r["close_with"] == '0') {
+                $html .= '<tr>
                                         <th>No. Transaksi/ No. SCO</th>
                                         <td>:</td>
                                         <td>' . $r["notansaksi"] . '</td>
@@ -487,8 +501,8 @@ class Followup extends CI_Controller
                                         <td>:</td>
                                         <td>Rp. ' . number_format($r["nominalpo"], 0, ".", ".") . '</td>
                                     </tr>';
-                                } else if(getStatusBar($r['followup_id']) == '60%' || getStatusBar($r['followup_id']) == '80%') {
-                                    $html .='<tr>
+            } else if (getStatusBar($r['followup_id']) == '60%' || getStatusBar($r['followup_id']) == '80%') {
+                $html .= '<tr>
                                         <th>No. Transaksi/ No. SCO</th>
                                         <td>:</td>
                                         <td>' . $r["nopenawaran"] . '</td>
@@ -498,8 +512,8 @@ class Followup extends CI_Controller
                                         <td>:</td>
                                         <td>Rp. ' . number_format($r["nominalpenawaran"], 0, ".", ".") . '</td>
                                     </tr>';
-                                }
-                            $html .='</table>
+            }
+            $html .= '</table>
                         </div>
                     </div>
                     <div role="tabpanel" id="tab-2" class="tab-pane">
@@ -512,27 +526,27 @@ class Followup extends CI_Controller
                                 <th>Note</th>
                             </thead>
                             <tbody>';
-                                foreach($row_dua->result() AS $rw) {
-                                    if(($rw->comment == '0')) {
-                                        $info = '<span class="label label-danger"><i class="fa fa-phone-square"></i> Kontak</span>';
-                                    } elseif(($rw->comment == '1')) {
-                                        $info = '<span class="label label-warning"><i class="fa fa-question-circle"></i> Followup</span>';
-                                    } elseif(($rw->comment == '2')){
-                                        $info = '<span class="label label-success"><i class="fa fa-file"></i> Penawaran</span>';
-                                    } elseif(($rw->comment == '3')){
-                                        $info = '<span class="label label-primary"><i class="fa fa-question-circle"> Followup Penawaran</span>';
-                                    } elseif(($rw->comment == '4')){
-                                        $info = '<span class="label label-info"><i class="fa fa-shopping-cart"> Sudah PO/ Order</span>';
-                                    }
-                                    $html .='<tr>
-                                        <td>' . $info .'</td>
-                                        <td>' . date("d-m-Y H:i", $rw->followup_date) .'</td>
+            foreach ($row_dua->result() as $rw) {
+                if (($rw->comment == '0')) {
+                    $info = '<span class="label label-danger"><i class="fa fa-phone-square"></i> Kontak</span>';
+                } elseif (($rw->comment == '1')) {
+                    $info = '<span class="label label-warning"><i class="fa fa-question-circle"></i> Followup</span>';
+                } elseif (($rw->comment == '2')) {
+                    $info = '<span class="label label-success"><i class="fa fa-file"></i> Penawaran</span>';
+                } elseif (($rw->comment == '3')) {
+                    $info = '<span class="label label-primary"><i class="fa fa-question-circle"> Followup Penawaran</span>';
+                } elseif (($rw->comment == '4')) {
+                    $info = '<span class="label label-info"><i class="fa fa-shopping-cart"> Sudah PO/ Order</span>';
+                }
+                $html .= '<tr>
+                                        <td>' . $info . '</td>
+                                        <td>' . date("d-m-Y H:i", $rw->followup_date) . '</td>
                                         <td>' . $rw->followup_method . '</td>
-                                        <td>' . date("d-m-Y H:i", $rw->due_date) .'</td>
-                                        <td>' . $rw->notes .'</td>
+                                        <td>' . date("d-m-Y H:i", $rw->due_date) . '</td>
+                                        <td>' . $rw->notes . '</td>
                                     </tr>';
-                                }
-                            $html .='</tbody>
+            }
+            $html .= '</tbody>
                         </table>
                     </div>
                 </div>
