@@ -27,12 +27,14 @@
             pagination: true,
             search: true,
             rowStyle: rowStyle,
+            filterControl: true,
             columns: [{
                 field: 'no',
                 title: 'No.'
             }, {
                 field: 'customer_name',
-                title: 'Nama Customer'
+                title: 'Nama Customer',
+                sortable: true
             }, {
                 field: 'comment',
                 title: 'Status Followup',
@@ -62,7 +64,8 @@
                 }
             }, {
                 field: 'add_by',
-                title: 'Sales'
+                title: 'Sales',
+                filterControl: 'select'
             }, {
                 field: 'followup_date',
                 title: 'Tanggal FU',
@@ -72,6 +75,15 @@
                 title: 'Due Date FU',
                 sortable: true,
                 formatter: dateFormatter
+            }, {
+                field: 'methode',
+                title: 'FU. Methode',
+                sortable: true,
+                filterControl: 'select'
+            }, {
+                field: 'followup_id',
+                title: 'ID Followup',
+                visible: false
             }, {
                 field: 'is_open',
                 title: 'Opportunity',
