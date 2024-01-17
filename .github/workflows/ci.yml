@@ -1,34 +1,101 @@
-name: CI
+---
+name: build
+on:
+  push:
+    tags-ignore:
+      - '**'
+    branches:
+      - master
+  pull_request:
 
-on: [push]
+env:
+  PKG_CACHE_PATH: .pkg
 
 jobs:
-  build:
+
+  yamllint:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ibiqlik/action-yamllint@v3
+        with:
+          strict: true
+
+  pkg:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          cache: 'npm'
+      - uses: actions/cache@v3
+        with:
+          path: ${{ env.PKG_CACHE_PATH }}
+          key: pkg-cache-${{ matrix.node-version }}
+      - run: npm ci
+      - run: npm run build
+      - run: npm run pkg-linux
+      - run: node src/index.js --version
+      - run: bin/linux/gitlab-ci-local --version
+      - run: bin/linux/gitlab-ci-local --help
+
+  eslint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
+
+  unused-deps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          cache: 'npm'
+      - run: npm ci
+      - run: npx depcheck --ignores depcheck
+
+  jest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          cache: 'npm'
+      - run: npm ci
+      - name: Run Tests
+        run: FORCE_COLOR=1 npx jest --coverage --testTimeout 90000 --verbose
+      - uses: sonarsource/sonarcloud-github-action@v1.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        if: ${{ env.SONAR_TOKEN != '' }}
+
+  code-ql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2.4.0  # Use the latest version that supports Node.js 16
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-    - name: Install PHP
-      uses: shivammathur/setup-php@v2
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
       with:
-        php-version: '7.3'
-        ref: 'v2'
-        token: ${{ secrets.GITHUB_TOKEN }}
-        submodules: 'recursive'
+        languages: 'typescript'
 
-    - name: Install Composer
-      run: |
-        php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-        php composer-setup.php --install-dir=/usr/local/bin --filename=composer
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v3
 
-    - name: Install dependencies
-      run: |
-        composer install -v
-
-    - name: Run tests
-      run: |
-        php -v
-        ls -la vendor/bin
-        vendor/bin/phpunit
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
