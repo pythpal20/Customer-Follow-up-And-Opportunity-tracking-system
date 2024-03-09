@@ -13,10 +13,12 @@ terdapat fitur dimana administrator bisa mengubah roles tiap-tiap devisi
 
 # grafik live informasi
 terdapat beberapa grafik informasi yang ditampilkan secara live 
-# download libraries dan Vendow
+# download libraries dan Vendor
 1. application/libraries/
 url: https://drive.google.com/file/d/1GxFJmMw88XROU-gcUguikAOwomsu6W52/view?usp=sharing
 
 2. /vendor
+Bisa cek composer.json
+kemudian pada terminal jalankan perintah `composer update` atau bisa download link dibawah kemudian buatkan folder vendor
 url: https://drive.google.com/file/d/1NScXn0gzr2DeIl1QHL9Zam8Dcs2fkptP/view?usp=sharing
 
